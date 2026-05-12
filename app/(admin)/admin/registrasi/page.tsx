@@ -42,6 +42,13 @@ export default function AdminRegistrasiPage() {
     setRegistrations((data ?? []) as Registration[])
   }
 
+  async function sendStatusEmail(email: string, name: string, status: 'approved' | 'rejected') {
+    // Calls a Supabase Edge Function — see /supabase/functions/notify-registration/index.ts
+    await supabase.functions.invoke('notify-registration', {
+      body: { email, name, status },
+    })
+  }
+
   async function handleApprove(reg: Registration) {
     setProcessing(reg.id)
 
@@ -64,14 +71,16 @@ export default function AdminRegistrasiPage() {
       reviewed_by: user?.id,
     }).eq('id', reg.id)
 
+    await sendStatusEmail(reg.email, reg.full_name, 'approved')
     await fetchRegistrations()
     setProcessing(null)
   }
 
-  async function handleReject(id: string) {
-    setProcessing(id)
+  async function handleReject(reg: Registration) {
+    setProcessing(reg.id)
     const { data: { user } } = await supabase.auth.getUser()
-    await supabase.from('registrations').update({ status: 'rejected', reviewed_by: user?.id }).eq('id', id)
+    await supabase.from('registrations').update({ status: 'rejected', reviewed_by: user?.id }).eq('id', reg.id)
+    await sendStatusEmail(reg.email, reg.full_name, 'rejected')
     await fetchRegistrations()
     setProcessing(null)
   }
@@ -108,28 +117,11 @@ export default function AdminRegistrasiPage() {
           <div className="space-y-4">
             {registrations.map((reg) => (
               <div key={reg.id} className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1">
-                    <h2 className="font-semibold text-lg">{reg.full_name}</h2>
-                    <div className="grid grid-cols-2 gap-x-6 gap-y-1 mt-2">
-                      <p className="text-sm text-gray-400">NIM: <span className="text-white">{reg.nim}</span></p>
-                      <p className="text-sm text-gray-400">Email: <span className="text-white">{reg.email}</span></p>
-                      {reg.phone && <p className="text-sm text-gray-400">HP: <span className="text-white">{reg.phone}</span></p>}
-                      <p className="text-sm text-gray-400">
-                        Daftar: <span className="text-white">
-                          {new Date(reg.applied_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
-                        </span>
-                      </p>
-                    </div>
-                    {reg.motivation && (
-                      <div className="mt-3 bg-gray-800 rounded-xl px-4 py-3">
-                        <p className="text-xs text-gray-400 mb-1">Motivasi</p>
-                        <p className="text-sm text-gray-300">{reg.motivation}</p>
-                      </div>
-                    )}
-                  </div>
+                {/* Header row: name + action buttons */}
+                <div className="flex items-start justify-between gap-4 mb-3">
+                  <h2 className="font-semibold text-lg">{reg.full_name}</h2>
                   {filter === 'pending' && (
-                    <div className="flex flex-col gap-2 shrink-0">
+                    <div className="flex gap-2 shrink-0">
                       <button
                         onClick={() => handleApprove(reg)}
                         disabled={processing === reg.id}
@@ -138,7 +130,7 @@ export default function AdminRegistrasiPage() {
                         {processing === reg.id ? '...' : 'Setujui'}
                       </button>
                       <button
-                        onClick={() => handleReject(reg.id)}
+                        onClick={() => handleReject(reg)}
                         disabled={processing === reg.id}
                         className="bg-red-600/20 hover:bg-red-600/30 text-red-400 text-sm font-medium px-4 py-2 rounded-xl transition-colors"
                       >
@@ -147,6 +139,25 @@ export default function AdminRegistrasiPage() {
                     </div>
                   )}
                 </div>
+
+                {/* Details grid — full width, no overlap risk */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1">
+                  <p className="text-sm text-gray-400">NIM: <span className="text-white">{reg.nim}</span></p>
+                  <p className="text-sm text-gray-400">Email: <span className="text-white break-all">{reg.email}</span></p>
+                  {reg.phone && <p className="text-sm text-gray-400">HP: <span className="text-white">{reg.phone}</span></p>}
+                  <p className="text-sm text-gray-400">
+                    Daftar: <span className="text-white">
+                      {new Date(reg.applied_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                    </span>
+                  </p>
+                </div>
+
+                {reg.motivation && (
+                  <div className="mt-3 bg-gray-800 rounded-xl px-4 py-3">
+                    <p className="text-xs text-gray-400 mb-1">Motivasi</p>
+                    <p className="text-sm text-gray-300">{reg.motivation}</p>
+                  </div>
+                )}
               </div>
             ))}
           </div>
