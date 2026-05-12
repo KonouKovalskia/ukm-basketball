@@ -1,12 +1,72 @@
 'use client'
 
+import { useEffect, useState } from 'react'
+import Image from 'next/image'
+import { createClient } from '@/lib/supabase'
+
+interface Stats {
+  anggota: number
+  cabang: number
+  tahun: number
+  kejuaraan: number
+}
+
 export default function HomePage() {
+  const supabase = createClient()
+  const [stats, setStats] = useState<Stats>({ anggota: 0, cabang: 0, tahun: 10, kejuaraan: 0 })
+
+  useEffect(() => {
+    async function fetchStats() {
+      const [
+        { count: anggota },
+        { count: cabang },
+        { count: kejuaraan },
+      ] = await Promise.all([
+        supabase.from('members').select('*', { count: 'exact', head: true }),
+        supabase.from('branches').select('*', { count: 'exact', head: true }),
+        supabase.from('achievements').select('*', { count: 'exact', head: true }),
+      ])
+
+      setStats((prev) => ({
+        ...prev,
+        anggota: anggota ?? 0,
+        cabang: cabang ?? 0,
+        kejuaraan: kejuaraan ?? 0,
+      }))
+    }
+
+    fetchStats()
+
+    // Real-time subscriptions
+    const channel = supabase
+      .channel('stats-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'members' }, fetchStats)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'branches' }, fetchStats)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'achievements' }, fetchStats)
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [])
+
+  const statItems = [
+    { value: `${stats.anggota}+`, label: 'Anggota Aktif' },
+    { value: String(stats.cabang), label: 'Cabang' },
+    { value: `${stats.tahun}+`, label: 'Tahun Berdiri' },
+    { value: `${stats.kejuaraan}+`, label: 'Kejuaraan' },
+  ]
+
   return (
     <div className="min-h-screen bg-gray-950 text-white">
       {/* Navbar */}
       <nav className="border-b border-gray-800 bg-gray-900/80 backdrop-blur sticky top-0 z-10 px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <span className="text-2xl">🏀</span>
+          <Image
+            src="/assets/logo.png"
+            alt="UKM Basketball Logo"
+            width={32}
+            height={32}
+            className="object-contain"
+          />
           <span className="font-bold">UKM Basketball</span>
         </div>
         <div className="hidden sm:flex items-center gap-6 text-sm text-gray-400">
@@ -46,15 +106,10 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Stats */}
+      {/* Stats — real-time from Supabase */}
       <section className="px-6 py-12 border-y border-gray-800">
         <div className="max-w-4xl mx-auto grid grid-cols-2 sm:grid-cols-4 gap-8 text-center">
-          {[
-            { value: '200+', label: 'Anggota Aktif' },
-            { value: '5', label: 'Cabang' },
-            { value: '10+', label: 'Tahun Berdiri' },
-            { value: '50+', label: 'Kejuaraan' },
-          ].map((s) => (
+          {statItems.map((s) => (
             <div key={s.label}>
               <p className="text-3xl font-extrabold text-orange-500">{s.value}</p>
               <p className="text-gray-400 text-sm mt-1">{s.label}</p>
