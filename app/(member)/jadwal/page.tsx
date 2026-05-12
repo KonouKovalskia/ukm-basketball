@@ -4,6 +4,11 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 
+interface Branch {
+  name: string
+  city: string
+}
+
 interface Schedule {
   id: string
   title: string
@@ -11,7 +16,7 @@ interface Schedule {
   location: string
   map_url: string
   type: string
-  branches: { name: string; city: string } | null
+  branches: Branch | null
 }
 
 const typeLabel: Record<string, string> = {
@@ -24,6 +29,11 @@ const typeClass: Record<string, string> = {
   latihan: 'bg-blue-500/20 text-blue-400',
   pertandingan: 'bg-orange-500/20 text-orange-400',
   rapat: 'bg-purple-500/20 text-purple-400',
+}
+
+function normalizeBranch(raw: Branch | Branch[] | null): Branch | null {
+  if (!raw) return null
+  return Array.isArray(raw) ? (raw[0] ?? null) : raw
 }
 
 export default function JadwalPage() {
@@ -42,7 +52,12 @@ export default function JadwalPage() {
         .select('id, title, event_at, location, map_url, type, branches(name, city)')
         .order('event_at', { ascending: true })
 
-      setSchedules((data ?? []) as Schedule[])
+      const normalized = (data ?? []).map((s: any) => ({
+        ...s,
+        branches: normalizeBranch(s.branches),
+      })) as Schedule[]
+
+      setSchedules(normalized)
       setLoading(false)
     }
     load()
