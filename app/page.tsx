@@ -99,5 +99,3 @@ export default function HomePage() {
         <p>© 2026 UKM Basketball. Dibuat dengan ❤️ untuk mahasiswa Indonesia.</p>
       </footer>
     </div>
-  )
-}
