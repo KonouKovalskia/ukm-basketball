@@ -11,7 +11,25 @@ export default function DaftarPage() {
   const [error, setError] = useState('')
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }))
+    const { name, value } = e.target
+
+    if (name === 'nim') {
+      // NIM: digits only
+      if (/^\d*$/.test(value)) {
+        setForm((prev) => ({ ...prev, nim: value }))
+      }
+      return
+    }
+
+    if (name === 'phone') {
+      // Phone: digits, +, spaces, dashes — but leading char must be + or digit
+      if (/^[+\d][\d\s\-]*$/.test(value) || value === '') {
+        setForm((prev) => ({ ...prev, phone: value }))
+      }
+      return
+    }
+
+    setForm((prev) => ({ ...prev, [name]: value }))
   }
 
   async function handleSubmit() {
@@ -68,25 +86,58 @@ export default function DaftarPage() {
         </div>
 
         <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 space-y-4">
-          {[
-            { name: 'full_name', label: 'Nama Lengkap', placeholder: 'Nama kamu', required: true },
-            { name: 'nim', label: 'NIM', placeholder: 'Nomor Induk Mahasiswa', required: true },
-            { name: 'email', label: 'Email', placeholder: 'email@kampus.ac.id', required: true },
-            { name: 'phone', label: 'No. HP / WhatsApp', placeholder: '08xxxxxxxxxx', required: false },
-          ].map((field) => (
-            <div key={field.name}>
-              <label className="block text-sm text-gray-400 mb-1.5">
-                {field.label} {field.required && <span className="text-orange-500">*</span>}
-              </label>
-              <input
-                name={field.name}
-                value={form[field.name as keyof typeof form]}
-                onChange={handleChange}
-                placeholder={field.placeholder}
-                className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-orange-500 transition-colors"
-              />
-            </div>
-          ))}
+          <div>
+            <label className="block text-sm text-gray-400 mb-1.5">
+              Nama Lengkap <span className="text-orange-500">*</span>
+            </label>
+            <input
+              name="full_name"
+              value={form.full_name}
+              onChange={handleChange}
+              placeholder="Nama kamu"
+              className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-orange-500 transition-colors"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm text-gray-400 mb-1.5">
+              NIM <span className="text-orange-500">*</span>
+            </label>
+            <input
+              name="nim"
+              value={form.nim}
+              onChange={handleChange}
+              placeholder="Nomor Induk Mahasiswa (angka)"
+              inputMode="numeric"
+              className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-orange-500 transition-colors"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm text-gray-400 mb-1.5">
+              Email <span className="text-orange-500">*</span>
+            </label>
+            <input
+              name="email"
+              value={form.email}
+              onChange={handleChange}
+              placeholder="email@kampus.ac.id"
+              type="email"
+              className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-orange-500 transition-colors"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm text-gray-400 mb-1.5">No. HP / WhatsApp</label>
+            <input
+              name="phone"
+              value={form.phone}
+              onChange={handleChange}
+              placeholder="+62xxxxxxxxxx atau 08xxxxxxxxxx"
+              inputMode="tel"
+              className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-orange-500 transition-colors"
+            />
+          </div>
 
           <div>
             <label className="block text-sm text-gray-400 mb-1.5">Motivasi Bergabung</label>
