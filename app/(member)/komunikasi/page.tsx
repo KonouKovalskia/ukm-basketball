@@ -1,11 +1,13 @@
-cat > "app/(member)/komunikasi/page.tsx" << 'EOF'
 'use client'
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 
-interface Profile { full_name: string }
+interface Profile {
+  full_name: string
+}
+
 interface Announcement {
   id: string
   title: string
@@ -33,15 +35,21 @@ export default function KomunikasiPage() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([])
   const [loading, setLoading] = useState(true)
 
+  function normalizeList(data: any[]): Announcement[] {
+    return data.map((a) => ({ ...a, profiles: normalizeProfile(a.profiles) }))
+  }
+
   useEffect(() => {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
+
       const { data } = await supabase
         .from('announcements')
         .select('id, title, body, audience, published_at, profiles(full_name)')
         .order('published_at', { ascending: false })
-      setAnnouncements((data ?? []).map((a: any) => ({ ...a, profiles: normalizeProfile(a.profiles) })))
+
+      setAnnouncements(normalizeList(data ?? []))
       setLoading(false)
     }
     load()
@@ -51,7 +59,9 @@ export default function KomunikasiPage() {
     const channel = supabase
       .channel('announcements-komunikasi')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'announcements' },
-        (payload) => { setAnnouncements((prev) => [payload.new as Announcement, ...prev]) }
+        (payload) => {
+          setAnnouncements((prev) => [payload.new as Announcement, ...prev])
+        }
       )
       .subscribe()
     return () => { supabase.removeChannel(channel) }
@@ -73,6 +83,7 @@ export default function KomunikasiPage() {
           Live
         </span>
       </nav>
+
       <div className="max-w-3xl mx-auto px-6 py-8 space-y-4">
         {announcements.length === 0 ? (
           <div className="text-center py-16 text-gray-500">Belum ada pengumuman.</div>
@@ -97,5 +108,3 @@ export default function KomunikasiPage() {
     </div>
   )
 }
-EOF
-echo "done"
